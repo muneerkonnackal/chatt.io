@@ -5,6 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import Container from "@/components/layout/Container";
 import SocketProvider from "@/providers/SocketProvider";
 import { cn } from "@/lib/utils";
+import TanstackProviders from "@/lib/tanstack-query/TanstackProvider";
 
 
 
@@ -25,13 +26,15 @@ export default function RootLayout({ children }) {
         <body
           className={cn(inter.className, "relative")}
         >
-          <SocketProvider>
-            <main className="flex flex-col min-h-screen bg-secondary">
-              <Navbar />
-              <Container />
-              {children}
-            </main>
-          </SocketProvider>
+         <TanstackProviders>
+            <SocketProvider>
+              <main className="flex flex-col min-h-screen bg-secondary">
+                <Navbar />
+                <Container />
+                {children}
+              </main>
+            </SocketProvider>
+         </TanstackProviders>
         </body>
       </html>
     </ClerkProvider>
