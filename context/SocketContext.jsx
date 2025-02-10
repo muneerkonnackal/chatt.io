@@ -42,196 +42,6 @@ export const SocketContextProvider = ({ children }) => {
 
     const currentSocketUser = onlineUsers?.find(onlineUser => onlineUser.userId === user?.id);
 
-    useEffect(() => {
-        if (!socket || !isSocketConnected) return;
-
-        socket.on("incomingVoiceCall", onIncomingVoiceCall);
-        socket.on("voiceWebrtcSignal", completeVoicePeerConnection);
-        socket.on("voiceHangup", handleVoiceHangup);
-
-        return () => {
-            socket.off("incomingVoiceCall", onIncomingVoiceCall);
-            socket.off("voiceWebrtcSignal", completeVoicePeerConnection);
-            socket.off("voiceHangup", handleVoiceHangup);
-        };
-    }, [socket, isSocketConnected]);
-
-    // const getVoiceStream = useCallback(async () => {
-    //     if (localVoiceStream) return localVoiceStream;
-    //     try {
-    //         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    //         setLocalVoiceStream(stream);
-    //         return stream;
-    //     } catch (error) {
-    //         console.error("Failed to get audio stream", error);
-    //         setLocalVoiceStream(null);
-    //         return null;
-    //     }
-    // }, [localVoiceStream]);
-
-    const getVoiceStream = useCallback(async () => {
-        if (localVoiceStream) return localVoiceStream;
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            console.log("Audio stream initialized:", stream); // Debug log
-            setLocalVoiceStream(stream);
-            return stream;
-        } catch (error) {
-            console.error("Failed to get audio stream", error);
-            setLocalVoiceStream(null);
-            return null;
-        }
-    }, [localVoiceStream]);
-    
-
-    const handleVoiceCall = useCallback(async (user) => {
-        if (isAdmin !== ADMIN_EMAIL) {
-            console.log("Only admin can initiate a call.");
-            return;
-        }
-        setVoiceCallEnded(false)
-        if (!currentSocketUser || !socket) return;
-
-        const stream = await getVoiceStream();
-        if (!stream) {
-            console.error("No audio stream available");
-            return;
-        }
-
-        const participants = { caller: currentSocketUser, receiver: user };
-        setOngoingVoiceCall({ 
-            participants,
-             isRinging: false });
-        socket.emit("voiceCall", participants);
-    }, [ socket, currentSocketUser, ongoingVoiceCall]);
-
-    const handleVoiceHangup = useCallback(
-        (data = {}) => {
-            const { isEmitHangup = true, ongoingVoiceCall: hangupCall } = data;
-
-            console.log('Hangup data:', data , 'socket:', socket);
-
-            if (socket && user && isEmitHangup && hangupCall) {
-                socket.emit("voiceHangup", { ongoingVoiceCall: hangupCall,
-                    userHangingupId : user.id
-                 });
-            }
-
-            // Clean up resources
-            setOngoingVoiceCall(null);
-            setVoicePeer(null);
-            if (localVoiceStream) {
-                localVoiceStream.getTracks().forEach((track) => track.stop());
-                setLocalVoiceStream(null);
-            }
-            
-            setVoiceCallEnded(true)
-        },
-        [ socket,user,localVoiceStream]
-    );
-    
-
-    const createVoicePeer = useCallback((stream, initiator) => {
-        const iceServers = [
-            {
-                urls: [
-                    "stun:stun.l.google.com:19302",
-                    "stun:stun1.l.google.com:19302",
-                    "stun:stun2.l.google.com:19302",
-                    "stun:stun3.l.google.com:19302",
-                ],
-            },
-        ];
-
-        const peer = new Peer({ stream, initiator, trickle: true, config: { iceServers } });
-
-        peer.on("stream", (remoteStream) => {
-            console.log("Received remote stream:", remoteStream);
-            setVoicePeer((prev) => ({ ...prev, stream: remoteStream }));
-        });
-    
-
-        peer.on("error", (error) => {
-            console.error("Voice peer error:", error);
-            handleVoiceHangup({ isEmitHangup: false });
-        });
-
-        peer.on("close", () => {
-            console.log("Voice peer connection closed.");
-            handleVoiceHangup({ isEmitHangup: false });
-        });
-
-        const rtcPeerConnection = peer._pc;
-        rtcPeerConnection.oniceconnectionstatechange = async () => {
-            console.log("ICE connection state:", rtcPeerConnection.iceConnectionState);
-            if (
-                rtcPeerConnection.iceConnectionState === "disconnected" ||
-                rtcPeerConnection.iceConnectionState === "failed"
-            ) {
-                handleVoiceHangup({ isEmitHangup: false });
-            }
-        };
-        console.log("Created voicepeer:", peer);
-        return peer;
-    }, [ongoingVoiceCall, setVoicePeer, handleVoiceHangup]);
-
-    const completeVoicePeerConnection = useCallback(async (connectionData) => {
-        if (!localVoiceStream) {
-            console.log("Missing audio stream");
-            return;
-        }
-        if (voicePeer) {
-            console.log("Signaling existing peer connection");
-            voicePeer.peerConnection?.signal(connectionData.sdp);
-            return;
-        }
-
-        console.log("Creating new peer for voice connection");
-
-        const newPeer = createVoicePeer(localVoiceStream, true);
-        setVoicePeer({
-            peerConnection: newPeer,
-            participantUser: connectionData.ongoingVoiceCall.participants.receiver,
-            stream: undefined,
-        });
-
-        newPeer.on("signal",async (data) => {
-            if (socket) {
-                socket.emit("voiceWebrtcSignal", { sdp: data, ongoingVoiceCall: connectionData.ongoingVoiceCall, isCaller: true });
-            }
-        });
-    }, [localVoiceStream, createVoicePeer, voicePeer, ongoingVoiceCall]);
-
-
-    const handleJoinVoiceCall = useCallback(async (ongoingVoiceCall) => {
-        setVoiceCallEnded(false)
-        setOngoingVoiceCall((prev) => (prev ? { ...prev, isRinging: false } : prev));
-
-        const stream = await getVoiceStream();
-        if (!stream) {
-            console.log("Could not get audio stream");
-            handleVoiceHangup({ ongoingVoiceCall });
-            return;
-        }
-
-        const newPeer = createVoicePeer(stream, true);
-        setVoicePeer({
-            peerConnection: newPeer,
-            participantUser: ongoingVoiceCall.participants.caller,
-            stream: undefined,
-        });
-
-        newPeer.on("signal", async(data) => {
-            if (socket) {
-                socket.emit("voiceWebrtcSignal", { sdp: data, ongoingVoiceCall, isCaller: false });
-            }
-        });
-    }, [ socket, currentSocketUser, getVoiceStream, createVoicePeer, handleVoiceHangup]);
-
-    
-    const onIncomingVoiceCall = useCallback((participants) => {
-        setOngoingVoiceCall({ participants, isRinging: true });
-    }, [socket, user, ongoingVoiceCall, handleJoinVoiceCall]);
 
     const getMediaStream = useCallback(async (faceMode) => {
         if (localStream) {
@@ -261,6 +71,66 @@ export const SocketContextProvider = ({ children }) => {
         }
     }, [localStream]);
 
+    const getVoiceStream = useCallback(async (faceMode) => {
+        if (localStream) {
+            return localStream;
+        }
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            // const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: true,
+                video:false
+                // video: {
+                //     width: { min: 640, ideal: 1280, max: 1920 },
+                //     height: { min: 360, ideal: 720, max: 1080 },
+                //     frameRate: { min: 16, ideal: 30, max: 30 },
+                //     facingMode: videoDevices.length > 0 ? faceMode : undefined
+                // }
+            });
+            setLocalStream(stream);
+            return stream;
+
+        } catch (error) {
+            console.log('Failed to get the stream', error);
+            setLocalStream(null);
+            return null;
+        }
+    }, [localStream]);
+
+    const handleVoiceCall = useCallback(async (user) => {
+        if (isAdmin !== ADMIN_EMAIL) {
+            console.log("Only admin can initiate a call.");
+            return;
+        }
+
+        setIsCallEnded(false);
+        if (!currentSocketUser || !socket) return;
+
+        const stream = await getVoiceStream();
+
+        if (!stream) {
+            console.log("No Stream in handleCall");
+            return;
+        }
+
+        const participants = { caller: currentSocketUser, receiver: user };
+        // setOngoingCall({
+        //     participants,
+        //     isRinging: false
+        // });
+
+        // socket.emit('call', participants);
+        setOngoingCall({
+            participants,
+            isRinging: false,
+            callType: 'voice'  // Add call type
+        });
+        socket.emit('call', { participants, callType: 'voice' });
+    }, [socket, currentSocketUser, ongoingCall]);
+
 
     const handleCall = useCallback(async (user) => {
         if (isAdmin !== ADMIN_EMAIL) {
@@ -279,12 +149,18 @@ export const SocketContextProvider = ({ children }) => {
         }
 
         const participants = { caller: currentSocketUser, receiver: user };
+        // setOngoingCall({
+        //     participants,
+        //     isRinging: false
+        // });
+
+        // socket.emit('call', participants);
         setOngoingCall({
             participants,
-            isRinging: false
+            isRinging: false,
+            callType: 'video'  // Add call type
         });
-
-        socket.emit('call', participants);
+        socket.emit('call', { participants, callType: 'video' });
     }, [socket, currentSocketUser, ongoingCall]);
 
     const handleHangup = useCallback(
@@ -405,6 +281,40 @@ export const SocketContextProvider = ({ children }) => {
 
     }, [localStream, createPeer, peer, ongoingCall]);
 
+    const handleJoinVoiceCall = useCallback(async (ongoingCall) => {
+        setIsCallEnded(false);
+        setOngoingCall(prev => {
+            if (prev) {
+                return { ...prev, isRinging: false };
+            }
+            return prev;
+        });
+
+        const stream = await getVoiceStream()
+        if (!stream) {
+            console.log('could not get stream in handle join Call');
+            handleHangup({ ongoingCall });
+            return;
+        }
+
+        const newPeer = createPeer(stream, true);
+
+        setPeer({
+            peerConnection: newPeer,
+            particpantUser: ongoingCall.participants.caller,
+            stream: undefined
+        });
+
+        newPeer.on('signal', async (data) => {
+            if (socket) {
+                socket.emit('webrtcSignal', {
+                    sdp: data,
+                    ongoingCall,
+                    isCaller: false
+                });
+            }
+        });
+    }, [socket, currentSocketUser, getVoiceStream, createPeer, handleHangup]);
     
 
     const handleJoinCall = useCallback(async (ongoingCall) => {
@@ -416,7 +326,7 @@ export const SocketContextProvider = ({ children }) => {
             return prev;
         });
 
-        const stream = await getMediaStream();
+        const stream = await getMediaStream()
         if (!stream) {
             console.log('could not get stream in handle join Call');
             handleHangup({ ongoingCall });
@@ -442,10 +352,16 @@ export const SocketContextProvider = ({ children }) => {
         });
     }, [socket, currentSocketUser, getMediaStream, createPeer, handleHangup]);
 
-    const onIncomingCall = useCallback((participants) => {
+    const onIncomingCall = useCallback((data) => {
+        // setOngoingCall({
+        //     participants,
+        //     isRinging: true
+        // });
+
         setOngoingCall({
-            participants,
-            isRinging: true
+            participants: data.participants,
+            isRinging: true,
+            callType: data.callType  // Add call type from server
         });
 
         // Auto-answer the call
@@ -524,6 +440,8 @@ export const SocketContextProvider = ({ children }) => {
     return <SocketContext.Provider value={{
         onlineUsers,
         handleCall,
+        handleVoiceCall,
+        handleJoinVoiceCall,
         ongoingCall,
         peer,
         localStream,
@@ -531,13 +449,6 @@ export const SocketContextProvider = ({ children }) => {
         handleHangup,
         isCallEnded,
         onlineUsers,
-         handleVoiceCall, // **Voice call function**
-                handleJoinVoiceCall, // **Voice join call**
-                handleVoiceHangup, // **Voice hangup**
-                ongoingVoiceCall, // **Voice call state**
-                localVoiceStream, // **Voice stream**
-                voicePeer,
-                voiceCallEnded
     }}>
         {children}
     </SocketContext.Provider>;

@@ -29,24 +29,54 @@ app.prepare().then(() => {
     console.log("New client connected:", socket.id);
 
     // Add user to online users
+    // socket.on("addNewUser", (clerkUser) => {
+    //     console.log("Adding user to onlineUsers:", clerkUser);
+    
+    //     if (!clerkUser || !clerkUser.id) {
+    //         console.log("Invalid user data received.");
+    //         return;
+    //     }
+    
+    //     // Check if user is already in the list
+    //     const existingUser = onlineUsers.find((user) => user.userId === clerkUser.id);
+    //     if (!existingUser) {
+    //         onlineUsers.push({
+    //             userId: clerkUser.id,
+    //             socketId: socket.id, // Store correct socket ID
+    //             profile: clerkUser,
+    //         });
+    //     } else {
+    //         existingUser.socketId = socket.id; // Update socket ID if user reconnects
+    //     }
+    
+    //     console.log("Current onlineUsers:", onlineUsers);
+    //     io.emit("getUsers", onlineUsers); // Broadcast updated user list
+    // });
+
     socket.on("addNewUser", (clerkUser) => {
-      console.log("Adding user to onlineUsers:", clerkUser);
-
-      if (
-        clerkUser &&
-        !onlineUsers.some((user) => user?.userId === clerkUser.id)
-      ) {
-        onlineUsers.push({
-          userId: clerkUser.id,
-          socketId: socket.id,
-          profile: clerkUser,
-        });
-      }
-
-      console.log("Current onlineUsers:", onlineUsers);
-
-      io.emit("getUsers", onlineUsers); // Broadcast updated user list
+        console.log("Adding user to onlineUsers:", clerkUser);
+    
+        if (!clerkUser || !clerkUser.id) {
+            console.log("Invalid user data received.");
+            return;
+        }
+    
+        // Check if user is already in the list
+        const existingUser = onlineUsers.find((user) => user.userId === clerkUser.id);
+        if (!existingUser) {
+            onlineUsers.push({
+                userId: clerkUser.id,
+                socketId: socket.id, // Store correct socket ID
+                profile: clerkUser,
+            });
+        } else {
+            existingUser.socketId = socket.id; // Update socket ID if user reconnects
+        }
+    
+        console.log("Current onlineUsers:", onlineUsers);
+        io.emit("getUsers", onlineUsers); // Broadcast updated user list
     });
+    
 
     // Handle user disconnection
     socket.on("disconnect", () => {

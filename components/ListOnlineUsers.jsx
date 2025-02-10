@@ -1,72 +1,35 @@
-// "use client"
-// import { useSocket } from "@/context/SocketContext"
-// import { useUser } from "@clerk/nextjs"
-// import Avatar from "./Avatar"
+"use client"
+import { useSocket } from "@/context/SocketContext"
+import { useUser } from "@clerk/nextjs"
+import Avatar from "./Avatar"
+import { IoVideocamOutline } from "react-icons/io5";
+import { BiPhoneCall } from "react-icons/bi";
 
-
-// const ListOnlineUsers = () => {
-//     const {user} = useUser()
-//     const {onlineUsers, handleCall} = useSocket()
-
-
-//   return (
-//     <div className="flex gap-4 border-b-primary/10 w-full items-center pb-2">
-//         {onlineUsers && onlineUsers.map(onlineUser => {
-
-//             if(onlineUser.profile.id === user?.id) return null
-
-//             return <div key={onlineUser.userId} onClick={() => handleCall(onlineUser)} className="flex flex-col items-center gap-1 cursor-pointer">
-//                 <Avatar src={onlineUser.profile.imageUrl} />
-//                 <div className="text-sm">{onlineUser.profile.fullName?.split(' ')[0]}</div>
-//             </div>
-//         }) }
-//     </div>
-//   )
-// }
-
-// export default ListOnlineUsers
-
-"use client";
-import { useSocket } from "@/context/SocketContext";
-import { useUser } from "@clerk/nextjs";
-import Avatar from "./Avatar";
 
 const ListOnlineUsers = () => {
-    const { user } = useUser();
-    const { onlineUsers, handleCall, handleVoiceCall } = useSocket(); // Import both functions
+    const {user} = useUser()
+    const {onlineUsers, handleCall, handleVoiceCall} = useSocket()
 
-    return (
-        <div className="flex gap-4 border-b-primary/10 w-full items-center pb-2">
-            {onlineUsers &&
-                onlineUsers.map((onlineUser) => {
-                    if (onlineUser.profile.id === user?.id) return null; // Skip the current user
 
-                    return (
-                        <div
-                            key={onlineUser.userId}
-                            className="flex flex-col items-center gap-1 cursor-pointer"
-                        >
-                            <Avatar src={onlineUser.profile.imageUrl} />
-                            <div className="text-sm">{onlineUser.profile.fullName?.split(" ")[0]}</div>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => handleCall(onlineUser)} // Video call
-                                    className="text-blue-500 hover:text-blue-700"
-                                >
-                                    Video Call
-                                </button>
-                                <button
-                                    onClick={() => handleVoiceCall(onlineUser)} // Voice call
-                                    className="text-green-500 hover:text-green-700"
-                                >
-                                    Voice Call
-                                </button>
-                            </div>
-                        </div>
-                    );
-                })}
-        </div>
-    );
-};
+  return (
+    <div className="flex gap-4  border-b-primary/10 w-full items-center pb-2 ml-10 ">
+        {onlineUsers && onlineUsers.map(onlineUser => {
 
-export default ListOnlineUsers;
+            if(onlineUser.profile.id === user?.id) return null
+
+            return <div key={onlineUser.userId}  className="flex flex-col items-center gap-1 cursor-pointer border-2 border-black shadow-lg p-2 rounded-lg">
+                <Avatar src={onlineUser.profile.imageUrl} />
+                <div className="text-sm">{onlineUser.profile.fullName?.split(' ')[0]}</div>
+                <div className="flex gap- ">
+                   <button className="rounded-full hover:border hover:bg-green-300 px-2 py-2"  onClick={() => handleCall(onlineUser)}><IoVideocamOutline   size={30}  /></button>
+                   <button className="rounded-full hover:border hover:bg-green-300 px-2 py-2" onClick={() => handleVoiceCall(onlineUser)}><BiPhoneCall size={30} /></button>
+                </div>
+            </div>
+
+           
+        }) }
+    </div>
+  )
+}
+
+export default ListOnlineUsers

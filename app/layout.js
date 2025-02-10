@@ -30,8 +30,7 @@ export default function RootLayout({ children }) {
             <SocketProvider>
               <main className="flex flex-col min-h-screen bg-secondary">
                 <Navbar />
-                <Container />
-                {children}
+                <Container />                {children}
               </main>
             </SocketProvider>
          </TanstackProviders>
