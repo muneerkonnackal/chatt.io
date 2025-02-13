@@ -178,6 +178,7 @@ export const SocketContextProvider = ({ children }) => {
             // socket.current.off("signal");
             setOngoingCall(null);
             setPeer(null);
+           
             if (localStream) {
                 localStream.getTracks().forEach((track) => track.stop());
                 setLocalStream(null);
@@ -199,12 +200,14 @@ export const SocketContextProvider = ({ children }) => {
             },
         ];
 
+
         const peer = new Peer({
             stream,
             initiator,
             trickle: true,
             config: { iceServers },
         });
+
 
         peer.on("stream", (remoteStream) => {
             setPeer((prevPeer) => {
@@ -253,7 +256,7 @@ export const SocketContextProvider = ({ children }) => {
         }
         if (peer) { 
             peer.peerConnection?.signal(connectionData.sdp);
-            console.log('chec kingConnection data andd sdp:', connectionData.sdp);
+            console.log('checkingConnection data andd sdp:', connectionData.sdp);
             
             return;
         }
@@ -445,6 +448,7 @@ export const SocketContextProvider = ({ children }) => {
         ongoingCall,
         peer,
         localStream,
+        setLocalStream,
         handleJoinCall,
         handleHangup,
         isCallEnded,

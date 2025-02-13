@@ -9,7 +9,7 @@ import { BiPhoneCall } from "react-icons/bi";
 const ListOnlineUsers = () => {
     const {user} = useUser()
     const {onlineUsers, handleCall, handleVoiceCall} = useSocket()
-
+  
 
   return (
     <div className="flex gap-4  border-b-primary/10 w-full items-center pb-2 ml-10 ">
