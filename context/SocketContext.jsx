@@ -1,9 +1,7 @@
 
-
-//[] cor 4
 "use client"
 import {  useUser } from "@clerk/nextjs";
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import Peer, { SignalData } from "simple-peer";
 
@@ -19,11 +17,10 @@ export const SocketContextProvider = ({ children }) => {
     const [peer, setPeer] = useState();
     const [isCallEnded, setIsCallEnded] = useState(false);
     const [isAdmin, setIsAdmin] = useState("")
-    // const [remoteDescriptionQueue, setRemoteDescriptionQueue] = useState( null);
-    const [ongoingVoiceCall, setOngoingVoiceCall] = useState(null);
-    const [localVoiceStream, setLocalVoiceStream] = useState(null);
-    const [voicePeer, setVoicePeer] = useState();
-    const [voiceCallEnded,setVoiceCallEnded] = useState(false)
+    const [isScreenSharing, setIsScreenSharing] = useState(false);
+    const [screenStream, setScreenStream] = useState(null);
+    const originalVideoTrackRef = useRef(null);
+    // const [activeScreenSharer, setActiveScreenSharer] = useState(null);
 
     const ADMIN_EMAIL = "muneer@steyp.com"; // Define the admin email
    
@@ -133,10 +130,10 @@ export const SocketContextProvider = ({ children }) => {
 
 
     const handleCall = useCallback(async (user) => {
-        if (isAdmin !== ADMIN_EMAIL) {
-            console.log("Only admin can initiate a call.");
-            return;
-        }
+        // if (isAdmin !== ADMIN_EMAIL) {
+        //     console.log("Only admin can initiate a call.");
+        //     return;
+        // }
 
         setIsCallEnded(false);
         if (!currentSocketUser || !socket) return;
@@ -173,7 +170,13 @@ export const SocketContextProvider = ({ children }) => {
                     userHangingupId: user.id,
                 });
             }
-
+             // Clean up screen sharing resources
+             if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
+                setScreenStream(null);
+            }
+            setIsScreenSharing(false);
+            originalVideoTrackRef.current = null;
             // Clean up local resources
             // socket.current.off("signal");
             setOngoingCall(null);
@@ -185,69 +188,126 @@ export const SocketContextProvider = ({ children }) => {
             }
             setIsCallEnded(true);
         },
-        [socket, user, localStream]
+        [socket, user, localStream, screenStream]
     );
+
+    // const createPeer = useCallback((stream, initiator) => {
+    //     const iceServers = [
+    //         {
+    //             urls: [
+    //                 "stun:stun.l.google.com:19302",
+    //                 "stun:stun1.l.google.com:19302",
+    //                 "stun:stun2.l.google.com:19302",
+    //                 "stun:stun3.l.google.com:19302",
+    //             ],
+    //         },
+    //     ];
+
+
+    //     const peer = new Peer({
+    //         stream,
+    //         initiator,
+    //         trickle: true,
+    //         config: { iceServers },
+    //     });
+
+
+    //     peer.on("stream", (remoteStream) => {
+    //         setPeer((prevPeer) => {
+    //             if (prevPeer) {
+    //                 return { ...prevPeer, stream: remoteStream };
+    //             }
+    //             return null;
+    //         });
+    //         console.log("Received remote stream:", remoteStream);
+    //     });
+
+    //     peer.on("error", (error) => {
+    //         console.error("Peer error:", error);
+    //         handleHangup({ isEmitHangup: false });
+    //     });
+
+    //     peer.on("close", () => {
+    //         console.log("Peer connection closed.");
+    //         handleHangup({ isEmitHangup: false });
+    //     });
+
+    //     const rtcPeerConnection = peer._pc;
+    //     console.log('peerpc', rtcPeerConnection);
+
+    //     rtcPeerConnection.oniceconnectionstatechange = async () => {
+    //         console.log("ICE connection state:", rtcPeerConnection.iceConnectionState);
+    //         if (
+    //             rtcPeerConnection.iceConnectionState === "disconnected" ||
+    //             rtcPeerConnection.iceConnectionState === "failed"
+    //         ) {
+    //             handleHangup({ isEmitHangup: false });
+    //         }
+    //     };
+
+
+
+    //     console.log("Created peer:", peer);
+
+    //     return peer;
+    // }, [ongoingCall, setPeer, handleHangup, ]);
 
     const createPeer = useCallback((stream, initiator) => {
         const iceServers = [
-            {
-                urls: [
-                    "stun:stun.l.google.com:19302",
-                    "stun:stun1.l.google.com:19302",
-                    "stun:stun2.l.google.com:19302",
-                    "stun:stun3.l.google.com:19302",
-                ],
-            },
+          {
+            urls: [
+              "stun:stun.l.google.com:19302",
+              "stun:stun1.l.google.com:19302",
+              "stun:stun2.l.google.com:19302",
+              "stun:stun3.l.google.com:19302",
+            ],
+          },
         ];
-
-
+      
         const peer = new Peer({
-            stream,
-            initiator,
-            trickle: true,
-            config: { iceServers },
+          stream,
+          initiator,
+          trickle: true,
+          config: { iceServers },
         });
-
-
+      
         peer.on("stream", (remoteStream) => {
-            setPeer((prevPeer) => {
-                if (prevPeer) {
-                    return { ...prevPeer, stream: remoteStream };
-                }
-                return null;
-            });
-            console.log("Received remote stream:", remoteStream);
+          setPeer((prevPeer) => {
+            if (prevPeer) {
+              return { ...prevPeer, stream: remoteStream };
+            }
+            return null;
+          });
+          console.log("Received remote stream:", remoteStream);
         });
-
+      
         peer.on("error", (error) => {
-            console.error("Peer error:", error);
-            handleHangup({ isEmitHangup: false });
+          console.error("Peer error:", error);
+          handleHangup({ isEmitHangup: false });
         });
-
+      
         peer.on("close", () => {
-            console.log("Peer connection closed.");
-            handleHangup({ isEmitHangup: false });
+          console.log("Peer connection closed.");
+          handleHangup({ isEmitHangup: false });
         });
-
+      
         const rtcPeerConnection = peer._pc;
         console.log('peerpc', rtcPeerConnection);
-
+      
         rtcPeerConnection.oniceconnectionstatechange = async () => {
-            console.log("ICE connection state:", rtcPeerConnection.iceConnectionState);
-            if (
-                rtcPeerConnection.iceConnectionState === "disconnected" ||
-                rtcPeerConnection.iceConnectionState === "failed"
-            ) {
-                handleHangup({ isEmitHangup: false });
-            }
+          console.log("ICE connection state:", rtcPeerConnection.iceConnectionState);
+          if (
+            rtcPeerConnection.iceConnectionState === "disconnected" ||
+            rtcPeerConnection.iceConnectionState === "failed"
+          ) {
+            handleHangup({ isEmitHangup: false });
+          }
         };
-
-
-
+      
         console.log("Created peer:", peer);
-
+      
         return peer;
-    }, [ongoingCall, setPeer, handleHangup, ]);
+      }, [handleHangup]);
 
     const completePeerConnection = useCallback(async (connectionData) => {
         if (!localStream) {
@@ -371,6 +431,123 @@ export const SocketContextProvider = ({ children }) => {
         // handleJoinCall({ participants });
     }, [socket, user, ongoingCall, handleJoinCall]);
 
+     //: Toggle screen share function 1
+
+    //  const toggleScreenShare = useCallback(async () => {
+    //     if (!localStream || !peer?.peerConnection) return;
+
+    //     const currentPeer = peer.peerConnection;
+
+    //     if (isScreenSharing) {
+    //         // Switch back to camera
+    //         const screenVideoTrack = screenStream.getVideoTracks()[0];
+    //         const originalVideoTrack = originalVideoTrackRef.current;
+
+    //         if (!originalVideoTrack) {
+    //             console.error('Original video track not found');
+    //             return;
+    //         }
+
+    //         // Replace the track in localStream
+    //         localStream.removeTrack(screenVideoTrack);
+    //         localStream.addTrack(originalVideoTrack);
+
+    //         // Replace the track in the peer connection
+    //         currentPeer.replaceTrack(screenVideoTrack, originalVideoTrack, localStream);
+
+    //         // Stop the screen stream
+    //         screenStream.getTracks().forEach(track => track.stop());
+    //         setScreenStream(null);
+    //         setIsScreenSharing(false);
+    //         originalVideoTrackRef.current = null;
+    //     } else {
+    //         // Start screen sharing
+    //         try {
+    //             const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true  });
+    //             const screenVideoTrack = screenStream.getVideoTracks()[0];
+    //             const originalVideoTrack = localStream.getVideoTracks()[0];
+
+    //             // Store the original video track
+    //             originalVideoTrackRef.current = originalVideoTrack;
+
+    //             // Replace the track in localStream
+    //             localStream.removeTrack(originalVideoTrack);
+    //             localStream.addTrack(screenVideoTrack);
+
+    //             // Replace the track in the peer connection
+    //             currentPeer.replaceTrack(originalVideoTrack, screenVideoTrack, localStream);
+
+    //             setScreenStream(screenStream);
+    //             setIsScreenSharing(true);
+
+    //             // Handle when user stops screen sharing via browser UI
+    //             screenVideoTrack.onended = () => {
+    //                 toggleScreenShare();
+    //             };
+    //         } catch (error) {
+    //             console.error('Error accessing screen share:', error);
+    //         }
+    //     }
+    // }, [localStream, peer, isScreenSharing, screenStream]);
+
+    //: 2
+    const toggleScreenShare = useCallback(async () => {
+        if (!localStream || !peer?.peerConnection) return;
+      
+        const sp = peer.peerConnection; // SimplePeer instance
+        const pc = sp._pc; // Actual RTCPeerConnection
+        const originalVideoTrack = localStream.getVideoTracks()[0];
+      
+        if (isScreenSharing) {
+          // Switch back to camera
+          const screenVideoTrack = screenStream.getVideoTracks()[0];
+          
+          if (pc.getSenders) {
+            pc.getSenders().forEach(sender => {
+              if (sender.track?.kind === 'video') {
+                sender.replaceTrack(originalVideoTrack);
+              }
+            });
+          }
+          
+          screenStream.getTracks().forEach(track => track.stop());
+          setScreenStream(null);
+          setIsScreenSharing(false);
+        } else {
+          try {
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+              video: true,
+              audio: false
+            });
+            
+            const screenVideoTrack = screenStream.getVideoTracks()[0];
+            
+            if (pc.getSenders) {
+              pc.getSenders().forEach(sender => {
+                if (sender.track?.kind === 'video') {
+                  sender.replaceTrack(screenVideoTrack);
+                }
+              });
+            }
+            
+            setScreenStream(screenStream);
+            setIsScreenSharing(true);
+      
+            screenVideoTrack.onended = () => {
+              pc.getSenders().forEach(sender => {
+                if (sender.track?.kind === 'video') {
+                  sender.replaceTrack(originalVideoTrack);
+                }
+              });
+              setScreenStream(null);
+              setIsScreenSharing(false);
+            };
+          } catch (error) {
+            console.error('Error accessing screen share:', error);
+          }
+        }
+      }, [localStream, peer, isScreenSharing, screenStream]);
+
     useEffect(() => {
         const newSocket = io();
         setSocket(newSocket);
@@ -440,6 +617,37 @@ export const SocketContextProvider = ({ children }) => {
         return () => clearTimeout(timeout);
     }, [isCallEnded]);
 
+    useEffect(() => {
+        if (!peer?.peerConnection || !screenStream) return;
+      
+        // Access the underlying RTCPeerConnection
+        const pc = peer.peerConnection._pc;
+        const screenTrack = screenStream.getVideoTracks()[0];
+        
+        // Check if getSenders exists before using it
+        if (pc.getSenders) {
+          pc.getSenders().forEach(sender => {
+            if (sender.track?.kind === 'video') {
+              sender.replaceTrack(screenTrack);
+            }
+          });
+        }
+      
+        return () => {
+          if (screenTrack) {
+            screenTrack.stop();
+            const originalTrack = localStream?.getVideoTracks()[0];
+            if (pc.getSenders && originalTrack) {
+              pc.getSenders().forEach(sender => {
+                if (sender.track?.kind === 'video') {
+                  sender.replaceTrack(originalTrack);
+                }
+              });
+            }
+          }
+        };
+      }, [screenStream, peer, localStream]);
+
     return <SocketContext.Provider value={{
         onlineUsers,
         handleCall,
@@ -453,6 +661,10 @@ export const SocketContextProvider = ({ children }) => {
         handleHangup,
         isCallEnded,
         onlineUsers,
+         // ... existing context values ...
+         toggleScreenShare,
+         isScreenSharing,
+         screenStream,
     }}>
         {children}
     </SocketContext.Provider>;
