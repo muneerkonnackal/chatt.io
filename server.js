@@ -76,6 +76,19 @@ app.prepare().then(() => {
         console.log("Current onlineUsers:", onlineUsers);
         io.emit("getUsers", onlineUsers); // Broadcast updated user list
     });
+
+    // In your Socket.IO server
+    let activeScreenSharer = null;
+
+    socket.on('startScreenShare', ({ userId, ongoingCall }) => {
+      activeScreenSharer = userId;
+      socket.to(ongoingCall.participants.receiver.socketId).emit('screenShareStarted', { userId });
+    });
+  
+    socket.on('stopScreenShare', ({ userId, ongoingCall }) => {
+      activeScreenSharer = null;
+      socket.to(ongoingCall.participants.receiver.socketId).emit('screenShareStopped');
+    });
     
 
     // Handle user disconnection
@@ -93,6 +106,7 @@ app.prepare().then(() => {
     socket.on("call", onCall);
     socket.on("webrtcSignal", onWebrtcSignal);
     socket.on("hangup", onHangup);
+    
 
     // Voice call events
     socket.on("voiceCall", onVoiceCall);

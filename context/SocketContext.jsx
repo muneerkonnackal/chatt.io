@@ -20,7 +20,8 @@ export const SocketContextProvider = ({ children }) => {
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [screenStream, setScreenStream] = useState(null);
     const originalVideoTrackRef = useRef(null);
-    // const [activeScreenSharer, setActiveScreenSharer] = useState(null);
+    // screen sharing & local stream swapping
+    const [swappedStreams, setSwappedStreams] = useState(false);
 
     const ADMIN_EMAIL = "muneer@steyp.com"; // Define the admin email
    
@@ -491,62 +492,97 @@ export const SocketContextProvider = ({ children }) => {
     // }, [localStream, peer, isScreenSharing, screenStream]);
 
     //: 2
+    // const toggleScreenShare = useCallback(async () => {
+    //     if (!localStream || !peer?.peerConnection) return;
+      
+    //     const sp = peer.peerConnection; // SimplePeer instance
+    //     const pc = sp._pc; // Actual RTCPeerConnection
+    //     const originalVideoTrack = localStream.getVideoTracks()[0];
+      
+    //     if (isScreenSharing) {
+    //       // Switch back to camera
+    //       const screenVideoTrack = screenStream.getVideoTracks()[0];
+          
+    //       if (pc.getSenders) {
+    //         pc.getSenders().forEach(sender => {
+    //           if (sender.track?.kind === 'video') {
+    //             sender.replaceTrack(originalVideoTrack);
+    //           }
+    //         });
+    //       }
+          
+    //       screenStream.getTracks().forEach(track => track.stop());
+    //       setScreenStream(null);
+    //       setIsScreenSharing(false);
+    //     } else {
+    //       try {
+    //         const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+    //           video: true,
+    //           audio: false
+    //         });
+            
+    //         const screenVideoTrack = screenStream.getVideoTracks()[0];
+            
+    //         if (pc.getSenders) {
+    //           pc.getSenders().forEach(sender => {
+    //             if (sender.track?.kind === 'video') {
+    //               sender.replaceTrack(screenVideoTrack);
+    //             }
+    //           });
+    //         }
+            
+    //         setScreenStream(screenStream);
+    //         setIsScreenSharing(true);
+      
+    //         screenVideoTrack.onended = () => {
+    //           pc.getSenders().forEach(sender => {
+    //             if (sender.track?.kind === 'video') {
+    //               sender.replaceTrack(originalVideoTrack);
+    //             }
+    //           });
+    //           setScreenStream(null);
+    //           setIsScreenSharing(false);
+    //         };
+    //       } catch (error) {
+    //         console.error('Error accessing screen share:', error);
+    //       }
+    //     }
+    //   }, [localStream, peer, isScreenSharing, screenStream]);
     const toggleScreenShare = useCallback(async () => {
-        if (!localStream || !peer?.peerConnection) return;
-      
-        const sp = peer.peerConnection; // SimplePeer instance
-        const pc = sp._pc; // Actual RTCPeerConnection
-        const originalVideoTrack = localStream.getVideoTracks()[0];
-      
-        if (isScreenSharing) {
-          // Switch back to camera
-          const screenVideoTrack = screenStream.getVideoTracks()[0];
-          
-          if (pc.getSenders) {
-            pc.getSenders().forEach(sender => {
-              if (sender.track?.kind === 'video') {
-                sender.replaceTrack(originalVideoTrack);
-              }
-            });
-          }
-          
-          screenStream.getTracks().forEach(track => track.stop());
-          setScreenStream(null);
-          setIsScreenSharing(false);
-        } else {
-          try {
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
-              video: true,
-              audio: false
-            });
-            
-            const screenVideoTrack = screenStream.getVideoTracks()[0];
-            
-            if (pc.getSenders) {
-              pc.getSenders().forEach(sender => {
-                if (sender.track?.kind === 'video') {
-                  sender.replaceTrack(screenVideoTrack);
-                }
-              });
-            }
-            
-            setScreenStream(screenStream);
-            setIsScreenSharing(true);
-      
-            screenVideoTrack.onended = () => {
-              pc.getSenders().forEach(sender => {
-                if (sender.track?.kind === 'video') {
-                  sender.replaceTrack(originalVideoTrack);
-                }
-              });
-              setScreenStream(null);
-              setIsScreenSharing(false);
-            };
-          } catch (error) {
-            console.error('Error accessing screen share:', error);
-          }
-        }
-      }, [localStream, peer, isScreenSharing, screenStream]);
+  if (!localStream || !peer?.peerConnection) return;
+
+  const sp = peer.peerConnection; // SimplePeer instance
+
+  if (isScreenSharing) {
+    // Stop screen sharing
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
+      sp.removeStream(screenStream);
+      setScreenStream(null);
+    }
+    setIsScreenSharing(false);
+  } else {
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+        video: true,
+        audio: false
+      });
+      // Add screen stream to the peer connection
+      sp.addStream(screenStream);
+      setScreenStream(screenStream);
+      setIsScreenSharing(true);
+
+      screenStream.getVideoTracks()[0].onended = () => {
+        sp.removeStream(screenStream);
+        setScreenStream(null);
+        setIsScreenSharing(false);
+      };
+    } catch (error) {
+      console.error('Error accessing screen share:', error);
+    }
+  }
+}, [localStream, peer, isScreenSharing, screenStream]);
+   
 
     useEffect(() => {
         const newSocket = io();
@@ -661,7 +697,6 @@ export const SocketContextProvider = ({ children }) => {
         handleHangup,
         isCallEnded,
         onlineUsers,
-         // ... existing context values ...
          toggleScreenShare,
          isScreenSharing,
          screenStream,

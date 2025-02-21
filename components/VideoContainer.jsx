@@ -134,7 +134,7 @@ const VideoContainer = ({ stream, isLocalStream, isOnCall, userName, profileImag
       }}
       /> */}
 
-<video
+      <video
   className={cn(
     "rounded border w-[800px]",
     isLocalStream && isOnCall && "xl:w-[300px] w-[250px] h-auto absolute border-purple-500 border-2"
@@ -150,7 +150,7 @@ const VideoContainer = ({ stream, isLocalStream, isOnCall, userName, profileImag
 />
 
       {/* Name & Profile Image Overlay */}
-      <div
+      {/* <div
         className={cn(
           "absolute flex items-center mt-16 space-x-2 bg-black bg-opacity-40 px-2 py-1 rounded-md text-white",
           isLocalStream ? "top-2 left-2" : "bottom-2 right-2"
@@ -166,7 +166,25 @@ const VideoContainer = ({ stream, isLocalStream, isOnCall, userName, profileImag
         <span className="text-sm font-semibold">
           {isLocalStream && isOnCall && `${userName} (You)`}
         </span>
-      </div>
+      </div> */}
+   <div
+  className={cn(
+    "absolute flex items-center  mt-16 space-x-2 bg-black bg-opacity-40 px-2 py-1 rounded-md text-white",
+    isLocalStream ? "top-2 left-2" : "bottom-2 right-2"
+  )}
+>
+  {profileImage && (
+    <img
+      src={profileImage}
+      alt={userName}
+      className="xl:w-8 xl:h-8 w-5 h-5 rounded-full border border-white"
+    />
+  )}
+  <span className="text-sm font-semibold">
+    {userName}
+  </span>
+</div>
+
     </div>
   );
 };

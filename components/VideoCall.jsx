@@ -579,6 +579,7 @@ import {
   MdStopScreenShare,
 } from "react-icons/md";
 import { ImPhoneHangUp } from "react-icons/im";
+import { useUser } from "@clerk/nextjs";
 
 const VideoCall = () => {
   const {
@@ -590,13 +591,17 @@ const VideoCall = () => {
     setLocalStream,
     toggleScreenShare,
     isScreenSharing,
-    screenStream 
+    screenStream,
+    // swapStreams,
+    // swappedStreams,
+    onlineUsers,
   } = useSocket();
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVidOn, setIsVidOn] = useState(true);
   const [showLocalStream, setShowLocalStream] = useState(true);
   const [startTime, setStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const { user, isLoaded } = useUser();
 
   // Set start time when the peer connection is established
   useEffect(() => {
@@ -651,10 +656,10 @@ const VideoCall = () => {
   const toggleCamera = useCallback(() => {
     if (localStream) {
       const videoTrack = localStream.getVideoTracks()[0];
-      if (isScreenSharing) {
-        // Don't allow camera toggle during screen share
-        return;
-      }
+      // if (isScreenSharing) {
+      //   // Don't allow camera toggle during screen share
+      //   return;
+      // }
       videoTrack.enabled = !videoTrack.enabled;
       setIsVidOn(videoTrack.enabled);
     }
@@ -675,6 +680,19 @@ const VideoCall = () => {
   };
 
   const isOnCall = localStream && peer && ongoingCall ? true : false;
+  const currentSocketUser = onlineUsers?.find(onlineUser => onlineUser.userId === user?.id);
+  // Determine if current user is the caller
+// Change this: (fix ID comparison)
+const isCaller = user?.id === ongoingCall.participants?.caller?.userId;
+
+// Get local and remote participant details
+const localParticipant = isCaller 
+  ? ongoingCall.participants.caller 
+  : ongoingCall.participants.receiver;
+
+const remoteParticipant = isCaller 
+  ? ongoingCall.participants.receiver 
+  : ongoingCall.participants.caller;
 
   if (isCallEnded) {
     return <div className="mt-5 text-rose-500 text-center">Call Ended</div>;
@@ -726,7 +744,8 @@ const VideoCall = () => {
             />
           )} */}
 
-          {localStream && showLocalStream && (
+
+          {/* {localStream && showLocalStream && (
             <VideoContainer
               stream={localStream}
               isLocalStream={true}
@@ -739,9 +758,20 @@ const VideoCall = () => {
               profileImage={
                 ongoingCall.participants?.receiver?.profile.imageUrl
               }
-              isScreenSharing={isScreenSharing} // Pass the prop
+              isScreenSharing={isScreenSharing}
             />
-          )}
+          )} */}
+
+{localStream && showLocalStream && (
+  <VideoContainer
+    stream={isScreenSharing && screenStream ? peer.stream : localStream}
+    isLocalStream={true}
+    isOnCall={isOnCall}
+    userName={`${localParticipant.profile.fullName.split(" ")[0]} (You)`}
+    profileImage={localParticipant.profile.imageUrl}
+    isScreenSharing={isScreenSharing}
+  />
+)}
 
           {/* Remote Video */}
           {/* {peer && peer.stream && (
@@ -753,47 +783,63 @@ const VideoCall = () => {
               profileImage={ongoingCall.participants?.caller?.profile.imageUrl || "default-avatar.jpg"}
             />
           )} */}
-         {/* {peer && peer.stream && (
+          
+
+          {/* Remote Video for A or B */}
+          {/* {peer && peer.stream && (
+            <VideoContainer
+              stream={
+                isScreenSharing && screenStream ? screenStream : peer.stream
+              }
+              isLocalStream={false}
+              isOnCall={isOnCall}
+              userName={
+                ongoingCall.participants?.caller?.profile.fullName || "Caller"
+              }
+              profileImage={
+                ongoingCall.participants?.caller?.profile.imageUrl ||
+                "default-avatar.jpg"
+              }
+              isScreenSharing={isScreenSharing}
+            />
+          )} */}
+
+{peer && peer.stream && (
   <VideoContainer
-    stream={isScreenSharing ? screenStream : peer.stream}
+    stream={isScreenSharing && screenStream ? screenStream : peer.stream}  
     isLocalStream={false}
     isOnCall={isOnCall}
-    userName={
-      ongoingCall.participants?.caller?.profile.fullName || "Caller"
-    }
-    profileImage={
-      ongoingCall.participants?.caller?.profile.imageUrl ||
-      "default-avatar.jpg"
-    }
+    userName={remoteParticipant.profile.fullName}
+    profileImage={remoteParticipant.profile.imageUrl || "default-avatar.jpg"}
     isScreenSharing={isScreenSharing}
   />
-)} */}
-
- {/* Remote Video */}
- {peer && peer.stream && (
-        <VideoContainer
-          stream={isScreenSharing && screenStream ? screenStream : peer.stream}
-          isLocalStream={false}
-          isOnCall={isOnCall}
-          userName={
-            ongoingCall.participants?.caller?.profile.fullName || "Caller"
-          }
-          profileImage={
-            ongoingCall.participants?.caller?.profile.imageUrl ||
-            "default-avatar.jpg"
-          }
-          isScreenSharing={isScreenSharing}
-        />
-      )}
+)}
         </div>
       </div>
 
       {/* Buttons */}
       <div className="mt-8 flex items-center justify-center gap-4">
         {/* Screen Share Button */}
-        {peer && peer.stream && (
+        {/* Screen Share Button */}
+        {/* {peer && peer.stream && (
           <button
             onClick={toggleScreenShare}
+            className="px-3 py-3 bg-green-500 text-white rounded-full"
+          >
+            {isScreenSharing ? (
+              <MdStopScreenShare size={28} />
+            ) : (
+              <MdScreenShare size={28} />
+            )}
+          </button>
+        )} */}
+        {/* Screen Share Button */}
+        {peer && peer.stream && (
+          <button
+            onClick={() => {
+              toggleScreenShare();
+              // swapStreams();
+            }}
             className="px-3 py-3 bg-green-500 text-white rounded-full"
           >
             {isScreenSharing ? (
