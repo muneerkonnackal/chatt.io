@@ -79,12 +79,6 @@ export const SocketContextProvider = ({ children }) => {
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: true,
                 video:false
-                // video: {
-                //     width: { min: 640, ideal: 1280, max: 1920 },
-                //     height: { min: 360, ideal: 720, max: 1080 },
-                //     frameRate: { min: 16, ideal: 30, max: 30 },
-                //     facingMode: videoDevices.length > 0 ? faceMode : undefined
-                // }
             });
             setLocalStream(stream);
             return stream;
@@ -113,12 +107,6 @@ export const SocketContextProvider = ({ children }) => {
         }
 
         const participants = { caller: currentSocketUser, receiver: user };
-        // setOngoingCall({
-        //     participants,
-        //     isRinging: false
-        // });
-
-        // socket.emit('call', participants);
         setOngoingCall({
             participants,
             isRinging: false,
@@ -129,11 +117,7 @@ export const SocketContextProvider = ({ children }) => {
 
 
     const handleCall = useCallback(async (user) => {
-        // if (isAdmin !== ADMIN_EMAIL) {
-        //     console.log("Only admin can initiate a call.");
-        //     return;
-        // }
-
+       
         setIsCallEnded(false);
         if (!currentSocketUser || !socket) return;
 
@@ -145,12 +129,6 @@ export const SocketContextProvider = ({ children }) => {
         }
 
         const participants = { caller: currentSocketUser, receiver: user };
-        // setOngoingCall({
-        //     participants,
-        //     isRinging: false
-        // });
-
-        // socket.emit('call', participants);
         setOngoingCall({
             participants,
             isRinging: false,
@@ -189,67 +167,6 @@ export const SocketContextProvider = ({ children }) => {
         },
         [socket, user, localStream, screenStream]
     );
-
-    // const createPeer = useCallback((stream, initiator) => {
-    //     const iceServers = [
-    //         {
-    //             urls: [
-    //                 "stun:stun.l.google.com:19302",
-    //                 "stun:stun1.l.google.com:19302",
-    //                 "stun:stun2.l.google.com:19302",
-    //                 "stun:stun3.l.google.com:19302",
-    //             ],
-    //         },
-    //     ];
-
-
-    //     const peer = new Peer({
-    //         stream,
-    //         initiator,
-    //         trickle: true,
-    //         config: { iceServers },
-    //     });
-
-
-    //     peer.on("stream", (remoteStream) => {
-    //         setPeer((prevPeer) => {
-    //             if (prevPeer) {
-    //                 return { ...prevPeer, stream: remoteStream };
-    //             }
-    //             return null;
-    //         });
-    //         console.log("Received remote stream:", remoteStream);
-    //     });
-
-    //     peer.on("error", (error) => {
-    //         console.error("Peer error:", error);
-    //         handleHangup({ isEmitHangup: false });
-    //     });
-
-    //     peer.on("close", () => {
-    //         console.log("Peer connection closed.");
-    //         handleHangup({ isEmitHangup: false });
-    //     });
-
-    //     const rtcPeerConnection = peer._pc;
-    //     console.log('peerpc', rtcPeerConnection);
-
-    //     rtcPeerConnection.oniceconnectionstatechange = async () => {
-    //         console.log("ICE connection state:", rtcPeerConnection.iceConnectionState);
-    //         if (
-    //             rtcPeerConnection.iceConnectionState === "disconnected" ||
-    //             rtcPeerConnection.iceConnectionState === "failed"
-    //         ) {
-    //             handleHangup({ isEmitHangup: false });
-    //         }
-    //     };
-
-
-
-    //     console.log("Created peer:", peer);
-
-    //     return peer;
-    // }, [ongoingCall, setPeer, handleHangup, ]);
 
     const createPeer = useCallback((stream, initiator) => {
         const iceServers = [
@@ -415,11 +332,7 @@ export const SocketContextProvider = ({ children }) => {
     }, [socket, currentSocketUser, getMediaStream, createPeer, handleHangup]);
 
     const onIncomingCall = useCallback((data) => {
-        // setOngoingCall({
-        //     participants,
-        //     isRinging: true
-        // });
-
+    
         setOngoingCall({
             participants: data.participants,
             isRinging: true,
@@ -430,66 +343,7 @@ export const SocketContextProvider = ({ children }) => {
         // handleJoinCall({ participants });
     }, [socket, user, ongoingCall, handleJoinCall]);
 
-     //: Toggle screen share function 1
-
-    //  const toggleScreenShare = useCallback(async () => {
-    //     if (!localStream || !peer?.peerConnection) return;
-
-    //     const currentPeer = peer.peerConnection;
-
-    //     if (isScreenSharing) {
-    //         // Switch back to camera
-    //         const screenVideoTrack = screenStream.getVideoTracks()[0];
-    //         const originalVideoTrack = originalVideoTrackRef.current;
-
-    //         if (!originalVideoTrack) {
-    //             console.error('Original video track not found');
-    //             return;
-    //         }
-
-    //         // Replace the track in localStream
-    //         localStream.removeTrack(screenVideoTrack);
-    //         localStream.addTrack(originalVideoTrack);
-
-    //         // Replace the track in the peer connection
-    //         currentPeer.replaceTrack(screenVideoTrack, originalVideoTrack, localStream);
-
-    //         // Stop the screen stream
-    //         screenStream.getTracks().forEach(track => track.stop());
-    //         setScreenStream(null);
-    //         setIsScreenSharing(false);
-    //         originalVideoTrackRef.current = null;
-    //     } else {
-    //         // Start screen sharing
-    //         try {
-    //             const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true  });
-    //             const screenVideoTrack = screenStream.getVideoTracks()[0];
-    //             const originalVideoTrack = localStream.getVideoTracks()[0];
-
-    //             // Store the original video track
-    //             originalVideoTrackRef.current = originalVideoTrack;
-
-    //             // Replace the track in localStream
-    //             localStream.removeTrack(originalVideoTrack);
-    //             localStream.addTrack(screenVideoTrack);
-
-    //             // Replace the track in the peer connection
-    //             currentPeer.replaceTrack(originalVideoTrack, screenVideoTrack, localStream);
-
-    //             setScreenStream(screenStream);
-    //             setIsScreenSharing(true);
-
-    //             // Handle when user stops screen sharing via browser UI
-    //             screenVideoTrack.onended = () => {
-    //                 toggleScreenShare();
-    //             };
-    //         } catch (error) {
-    //             console.error('Error accessing screen share:', error);
-    //         }
-    //     }
-    // }, [localStream, peer, isScreenSharing, screenStream]);
-
-    //: 2
+    
     const toggleScreenShare = useCallback(async () => {
         if (!localStream || !peer?.peerConnection) return;
       
@@ -516,7 +370,7 @@ export const SocketContextProvider = ({ children }) => {
           try {
             const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
               video: true,
-              audio: false
+              audio: true,
             });
             
             const screenVideoTrack = screenStream.getVideoTracks()[0];
@@ -618,8 +472,6 @@ export const SocketContextProvider = ({ children }) => {
 
     useEffect(() => {
         if (!peer?.peerConnection || !screenStream) return;
-      
-        // Access the underlying RTCPeerConnection
         const pc = peer.peerConnection._pc;
         const screenTrack = screenStream.getVideoTracks()[0];
         
@@ -660,7 +512,6 @@ export const SocketContextProvider = ({ children }) => {
         handleHangup,
         isCallEnded,
         onlineUsers,
-         // ... existing context values ...
          toggleScreenShare,
          isScreenSharing,
          screenStream,

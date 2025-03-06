@@ -10,15 +10,12 @@ const VideoContainer = ({ stream, isLocalStream, isOnCall, userName, profileImag
     const videoElement = videoRef.current;
     if (!videoElement || !stream) return;
 
-    // Create fresh MediaStream to force video update
     const updateVideo = () => {
       videoElement.srcObject = new MediaStream(stream.getTracks());
     };
 
-    // Initial setup
     updateVideo();
 
-    // Listen for track changes
     stream.addEventListener("addtrack", updateVideo);
     stream.addEventListener("removetrack", updateVideo);
 
@@ -31,21 +28,7 @@ const VideoContainer = ({ stream, isLocalStream, isOnCall, userName, profileImag
 
   return (
     <div className="">
-      {/* Video Element */}
-      {/* <video
-        className={cn(
-          "rounded border w-[800px]",
-          isLocalStream && isOnCall && "xl:w-[300px] w-[250px] h-auto absolute border-purple-500 border-2"
-        )}
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted={isLocalStream}
-        // style={{ transform: isLocalStream ? "scaleX(-1)" : "none" }}
-        style={{ 
-          transform: isLocalStream && !isScreenSharing ? "scaleX(-1)" : "none" 
-      }}
-      /> */}
+   
 
 <video
   className={cn(

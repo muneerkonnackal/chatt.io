@@ -150,17 +150,7 @@ const VideoCall = () => {
             </div>
           )}
 
-          {/* Local Video */}
-          {/* {localStream && showLocalStream && (
-            <VideoContainer
-              stream={localStream}
-              isLocalStream={true}
-              isOnCall={isOnCall}
-              userName={ongoingCall.participants?.receiver?.profile.fullName?.split(" ")[0] || "You"}
-              profileImage={ongoingCall.participants?.receiver?.profile.imageUrl}
-            />
-          )} */}
-
+         
           {localStream && showLocalStream && (
             <VideoContainer
               stream={localStream}
@@ -178,31 +168,6 @@ const VideoCall = () => {
             />
           )}
 
-          {/* Remote Video */}
-          {/* {peer && peer.stream && (
-            <VideoContainer
-              stream={peer.stream}
-              isLocalStream={false}
-              isOnCall={isOnCall}
-              userName={ongoingCall.participants?.caller?.profile.fullName || "Caller"}
-              profileImage={ongoingCall.participants?.caller?.profile.imageUrl || "default-avatar.jpg"}
-            />
-          )} */}
-         {/* {peer && peer.stream && (
-  <VideoContainer
-    stream={isScreenSharing ? screenStream : peer.stream}
-    isLocalStream={false}
-    isOnCall={isOnCall}
-    userName={
-      ongoingCall.participants?.caller?.profile.fullName || "Caller"
-    }
-    profileImage={
-      ongoingCall.participants?.caller?.profile.imageUrl ||
-      "default-avatar.jpg"
-    }
-    isScreenSharing={isScreenSharing}
-  />
-)} */}
 
  {/* Remote Video */}
  {peer && peer.stream && (
